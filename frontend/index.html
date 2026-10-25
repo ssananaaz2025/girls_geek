@@ -1,0 +1,1678 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>GeoAgentic — Emergency Fleet & Decision System</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="GeoAgentic — Real-time multi-role emergency fleet dispatch and AI-powered decision support system for Bengaluru." />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap"
+    rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #ffffff;
+      --bg-2: #f5f7fb;
+      --panel: #ffffff;
+      --panel-2: #f8fafc;
+      --border: rgba(71, 85, 105, 0.16);
+      --border-bright: rgba(71, 85, 105, 0.3);
+      --red: #ff4444;
+      --red-dim: rgba(255, 68, 68, 0.15);
+      --red-glow: rgba(255, 68, 68, 0.35);
+      --green: #07834f;
+      --green-dim: rgba(7, 131, 79, 0.1);
+      --green-glow: rgba(7, 131, 79, 0.22);
+      --blue: #2563eb;
+      --blue-dim: rgba(37, 99, 235, 0.09);
+      --blue-glow: rgba(61, 139, 255, 0.35);
+      --amber: #ffaa00;
+      --amber-dim: rgba(255, 170, 0, 0.12);
+      --amber-glow: rgba(255, 170, 0, 0.3);
+      --cyan: #087e9b;
+      --text: #172033;
+      --text-2: #475569;
+      --text-3: #64748b;
+      --font: "Inter", system-ui, sans-serif;
+      --mono: "JetBrains Mono", monospace;
+      --radius: 12px;
+      --radius-sm: 8px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+      font-size: 13px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 99px; }
+
+    /* HEADER */
+    header {
+      height: 58px;
+      background: rgba(255, 255, 255, 0.98);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      flex-shrink: 0;
+      z-index: 1000;
+      position: relative;
+    }
+
+    header::after {
+      content: "";
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(61, 139, 255, 0.4), rgba(0, 212, 255, 0.3), transparent);
+    }
+
+    .brand { display: flex; align-items: center; gap: 12px; }
+
+    .brand-logo {
+      width: 34px; height: 34px;
+      background: linear-gradient(135deg, #ff4444 0%, #ff0080 100%);
+      border-radius: 9px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+      box-shadow: 0 0 16px rgba(255, 68, 68, 0.5);
+      flex-shrink: 0;
+    }
+
+    .brand-text { display: flex; flex-direction: column; gap: 1px; }
+
+    .brand-name {
+      font-size: 15px; font-weight: 800; letter-spacing: -0.03em;
+      background: linear-gradient(135deg, #172033, #2563eb);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text; line-height: 1;
+    }
+
+    .brand-sub {
+      font-size: 10px; color: var(--text-3); font-weight: 500;
+      letter-spacing: 0.04em; text-transform: uppercase;
+    }
+
+    .brand-badge {
+      background: linear-gradient(135deg, rgba(255,68,68,0.2), rgba(255,0,128,0.2));
+      border: 1px solid rgba(255, 68, 68, 0.4);
+      color: #b91c1c; padding: 2px 7px; border-radius: 5px;
+      font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em;
+    }
+
+    /* NAV TABS */
+    .nav-tabs {
+      display: flex; gap: 3px;
+      background: rgba(15, 23, 42, 0.035);
+      border: 1px solid var(--border);
+      padding: 4px; border-radius: 10px;
+    }
+
+    .tab-btn {
+      background: transparent; border: none; color: var(--text-2);
+      padding: 6px 14px; font-size: 12px; font-weight: 600;
+      font-family: var(--font); border-radius: 7px; cursor: pointer;
+      transition: all 0.2s ease; display: flex; align-items: center;
+      gap: 6px; letter-spacing: 0.01em; white-space: nowrap;
+    }
+
+    .tab-btn:hover { color: var(--text); background: rgba(15, 23, 42, 0.06); }
+
+    .tab-btn.active {
+      background: linear-gradient(135deg, rgba(37,99,235,0.12), rgba(8,126,155,0.08));
+      color: #1d4ed8;
+      border: 1px solid rgba(37,99,235,0.24);
+      box-shadow: 0 2px 12px rgba(37,99,235,0.1), inset 0 1px 0 rgba(255,255,255,0.8);
+    }
+
+    /* STATUS */
+    .system-status { display: flex; align-items: center; gap: 10px; }
+
+    .reset-btn {
+      display: flex; align-items: center; gap: 6px;
+      padding: 6px 12px;
+      background: var(--red-dim);
+      border: 1px solid rgba(255, 68, 68, 0.3);
+      color: #b91c1c; border-radius: var(--radius-sm);
+      font-size: 11px; font-weight: 600; font-family: var(--font);
+      cursor: pointer; transition: all 0.2s; letter-spacing: 0.01em;
+    }
+
+    .reset-btn:hover {
+      background: rgba(255, 68, 68, 0.25);
+      border-color: rgba(255, 68, 68, 0.5);
+      box-shadow: 0 0 16px var(--red-glow);
+    }
+
+    .status-pill {
+      display: flex; align-items: center; gap: 7px;
+      background: var(--green-dim);
+      border: 1px solid rgba(0, 232, 122, 0.25);
+      padding: 5px 10px; border-radius: 99px;
+    }
+
+    .status-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--green); box-shadow: 0 0 8px var(--green-glow);
+      animation: pulse-dot 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; box-shadow: 0 0 8px var(--green-glow); }
+      50% { opacity: 0.6; box-shadow: 0 0 4px var(--green-glow); }
+    }
+
+    .status-text { font-size: 11px; font-weight: 600; color: var(--green); font-family: var(--mono); }
+
+    /* AI ENGINE LABEL */
+    .ai-engine-label {
+      display: flex; align-items: center; gap: 8px;
+      padding: 5px 12px 5px 8px;
+      background: linear-gradient(135deg, rgba(0,212,255,0.07), rgba(61,139,255,0.07));
+      border: 1px solid rgba(0,212,255,0.22);
+      border-radius: 8px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .ai-engine-label::before {
+      content: "";
+      position: absolute; inset: 0;
+      background: linear-gradient(90deg, transparent, rgba(0,212,255,0.06), transparent);
+      animation: shimmer-ai 3s ease-in-out infinite;
+    }
+
+    @keyframes shimmer-ai {
+      0%, 100% { transform: translateX(-100%); }
+      50% { transform: translateX(100%); }
+    }
+
+    .ai-engine-icon {
+      width: 22px; height: 22px;
+      background: linear-gradient(135deg, rgba(8,126,155,0.12), rgba(37,99,235,0.12));
+      border: 1px solid rgba(0,212,255,0.3);
+      border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; flex-shrink: 0;
+      box-shadow: 0 0 8px rgba(0,212,255,0.2);
+    }
+
+    .ai-engine-text-group { display: flex; flex-direction: column; gap: 1px; line-height: 1; }
+
+    .ai-engine-name {
+      font-size: 11px; font-weight: 800; letter-spacing: 0.01em;
+      background: linear-gradient(135deg, #087e9b, #2563eb);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .ai-engine-sub {
+      font-size: 9px; font-weight: 600; color: var(--text-3);
+      text-transform: uppercase; letter-spacing: 0.06em;
+    }
+
+    .ai-engine-pulse {
+      width: 5px; height: 5px; border-radius: 50%;
+      background: var(--cyan); flex-shrink: 0;
+      box-shadow: 0 0 6px rgba(0,212,255,0.7);
+      animation: pulse-dot 1.8s ease-in-out infinite;
+    }
+
+    /* WORKSPACE */
+    .workspace { flex: 1; display: flex; overflow: hidden; }
+
+    .dashboard-view { display: none; width: 100%; height: 100%; }
+    .dashboard-view.active { display: flex; }
+
+    /* SIDEBAR */
+    .sidebar, .driver-sidebar {
+      width: 380px; flex-shrink: 0;
+      background: var(--panel);
+      border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      overflow-y: auto; padding: 14px 14px 20px; gap: 10px;
+      scroll-behavior: smooth;
+    }
+    .driver-sidebar { width: 360px; }
+
+    /* Compact dispatch card when mission is active */
+    .dispatch-card-compact .dispatch-fields { display: none; }
+    .dispatch-card-compact .dispatch-compact-summary { display: flex !important; }
+    .dispatch-compact-summary {
+      display: none;
+      align-items: center; gap: 8px;
+      background: rgba(37,99,235,0.045);
+      border: 1px solid rgba(37,99,235,0.16);
+      border-radius: var(--radius-sm); padding: 8px 10px;
+      margin-bottom: 10px; font-size: 11px;
+    }
+    .dispatch-compact-vehicle { font-weight: 700; color: var(--text); flex: 1; }
+    .dispatch-compact-badge { font-size: 9px; font-weight: 800; color: #1d4ed8; text-transform: uppercase; letter-spacing: 0.06em; }
+
+    /* CARDS */
+    .card {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px;
+      transition: border-color 0.2s;
+      animation: fadeInUp 0.3s ease;
+    }
+
+    .card:hover { border-color: var(--border-bright); }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .card-header {
+      display: flex; align-items: center;
+      justify-content: space-between; margin-bottom: 12px;
+    }
+
+    .card-title {
+      font-size: 11px; font-weight: 700; color: var(--text-2);
+      text-transform: uppercase; letter-spacing: 0.07em;
+      display: flex; align-items: center; gap: 7px;
+    }
+
+    .card-title-icon {
+      width: 24px; height: 24px; border-radius: 6px;
+      display: flex; align-items: center; justify-content: center; font-size: 13px;
+    }
+
+    .card-title-icon.blue { background: var(--blue-dim); border: 1px solid rgba(61,139,255,0.25); }
+    .card-title-icon.red { background: var(--red-dim); border: 1px solid rgba(255,68,68,0.25); }
+    .card-title-icon.green { background: var(--green-dim); border: 1px solid rgba(0,232,122,0.25); }
+    .card-title-icon.amber { background: var(--amber-dim); border: 1px solid rgba(255,170,0,0.25); }
+
+    /* BADGES */
+    .badge {
+      padding: 3px 8px; border-radius: 5px;
+      font-size: 9px; font-weight: 800;
+      text-transform: uppercase; letter-spacing: 0.07em; font-family: var(--mono);
+    }
+
+    .badge-danger { background: var(--red-dim); color: #b91c1c; border: 1px solid rgba(185,28,28,0.25); }
+    .badge-success { background: var(--green-dim); color: var(--green); border: 1px solid rgba(7,131,79,0.25); }
+    .badge-warning { background: var(--amber-dim); color: #92400e; border: 1px solid rgba(146,64,14,0.25); }
+    .badge-info { background: var(--blue-dim); color: #1d4ed8; border: 1px solid rgba(37,99,235,0.24); }
+
+    /* FORM */
+    .field { margin-bottom: 10px; }
+
+    label {
+      font-size: 10px; font-weight: 700; color: var(--text-3);
+      display: block; margin-bottom: 5px;
+      text-transform: uppercase; letter-spacing: 0.06em;
+    }
+
+    input, select {
+      width: 100%; padding: 9px 12px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: #ffffff;
+      color: var(--text); font-size: 12px; font-family: var(--font);
+      transition: all 0.2s; outline: none; appearance: none; -webkit-appearance: none;
+    }
+
+    input::placeholder { color: var(--text-3); }
+
+    input:focus, select:focus {
+      border-color: rgba(61,139,255,0.5);
+      background: #ffffff;
+      box-shadow: 0 0 0 3px rgba(61,139,255,0.1);
+    }
+
+    select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24'%3E%3Cpath stroke='%234d6a8a' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 10px center;
+      background-size: 14px; padding-right: 32px; cursor: pointer;
+    }
+
+    .field-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px; }
+
+    .field-link {
+      font-size: 10px; color: var(--blue); cursor: pointer; font-weight: 600;
+      text-decoration: none; transition: color 0.2s; letter-spacing: 0.03em;
+    }
+
+    .field-link:hover { color: var(--cyan); }
+
+    /* BUTTONS */
+    .btn {
+      width: 100%; padding: 10px 16px;
+      border-radius: var(--radius-sm); border: none;
+      font-size: 12px; font-weight: 700; font-family: var(--font);
+      cursor: pointer; transition: all 0.2s ease;
+      display: flex; align-items: center; justify-content: center;
+      gap: 7px; letter-spacing: 0.02em;
+      position: relative; overflow: hidden;
+    }
+
+    .btn:active { transform: scale(0.98); }
+
+    .btn-primary { background: linear-gradient(135deg, #2563eb, #3d8bff); color: white; box-shadow: 0 4px 16px rgba(61,139,255,0.3); }
+    .btn-primary:hover { box-shadow: 0 4px 24px rgba(61,139,255,0.5); }
+
+    .btn-warning { background: linear-gradient(135deg, #b45309, #d97706); color: #fef3c7; box-shadow: 0 4px 12px rgba(217,119,6,0.25); }
+    .btn-danger { background: linear-gradient(135deg, #b91c1c, #ef4444); color: white; box-shadow: 0 4px 12px rgba(239,68,68,0.25); }
+    .btn-success { background: linear-gradient(135deg, #047857, #10b981); color: white; box-shadow: 0 4px 12px rgba(16,185,129,0.25); }
+
+    .btn-ghost {
+      background: rgba(15,23,42,0.035); border: 1px solid var(--border); color: var(--text-2);
+    }
+
+    .btn-ghost:hover { background: rgba(15,23,42,0.07); border-color: var(--border-bright); color: var(--text); }
+
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
+
+    .btn-row { display: flex; gap: 8px; margin-top: 8px; }
+    .btn-row .btn { flex: 1; }
+
+    /* MAP */
+    .map-container { flex: 1; position: relative; background: var(--bg); }
+    #mainMap, #driverMap { width: 100%; height: 100%; }
+
+    /* TELEMETRY */
+    .telemetry-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+    .tele-item {
+      background: #ffffff; border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 8px 10px;
+    }
+
+    .tele-label { font-size: 9px; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 3px; }
+    .tele-val { font-family: var(--mono); font-size: 14px; font-weight: 700; color: var(--blue); }
+    .tele-item.full { grid-column: span 2; }
+    .tele-item.warn .tele-val { color: var(--red); }
+    .tele-item.caution .tele-val { font-size: 11px; font-weight: 600; color: var(--amber); }
+
+    /* RIGHT AI PANEL */
+    .ai-right-panel {
+      width: 360px; flex-shrink: 0;
+      background: var(--panel);
+      border-left: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      overflow-y: auto; padding: 14px 14px 20px;
+      gap: 10px; scroll-behavior: smooth;
+    }
+
+    .ai-panel-header {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 14px;
+      background: linear-gradient(135deg, rgba(0,212,255,0.06), rgba(61,139,255,0.06));
+      border: 1px solid rgba(0,212,255,0.18);
+      border-radius: var(--radius);
+      position: relative; overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .ai-panel-header::before {
+      content: ""; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, transparent, var(--cyan), var(--blue), transparent);
+    }
+
+    .ai-panel-icon {
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg, rgba(0,212,255,0.18), rgba(61,139,255,0.18));
+      border: 1px solid rgba(0,212,255,0.35);
+      border-radius: 10px; display: flex; align-items: center;
+      justify-content: center; font-size: 18px; flex-shrink: 0;
+      box-shadow: 0 0 14px rgba(0,212,255,0.25);
+    }
+
+    .ai-panel-title-group { flex: 1; }
+
+    .ai-panel-title {
+      font-size: 13px; font-weight: 800; letter-spacing: -0.01em;
+      background: linear-gradient(135deg, #087e9b, #2563eb);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text; line-height: 1; margin-bottom: 3px;
+    }
+
+    .ai-panel-sub {
+      font-size: 10px; color: var(--text-3); font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.05em;
+    }
+
+    /* AGENT PANEL */
+    .agent-card {
+      background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+      border: 1px solid rgba(61,139,255,0.35);
+      border-radius: var(--radius); padding: 14px;
+      position: relative; overflow: hidden;
+      animation: fadeInUp 0.3s ease;
+    }
+
+    .agent-card::before {
+      content: ""; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, transparent, var(--blue), var(--cyan), transparent);
+    }
+
+    .confidence-bar-wrapper { margin-bottom: 10px; }
+    .confidence-header { display: flex; justify-content: space-between; margin-bottom: 5px; }
+    .confidence-label { font-size: 10px; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.06em; }
+    .confidence-val { font-size: 12px; font-weight: 800; font-family: var(--mono); color: var(--blue); }
+
+    .confidence-bar { height: 4px; background: rgba(71,85,105,0.14); border-radius: 99px; overflow: hidden; }
+    .confidence-fill {
+      height: 100%; background: linear-gradient(90deg, var(--blue), var(--cyan));
+      border-radius: 99px; width: 95%; transition: width 0.4s ease;
+      box-shadow: 0 0 8px rgba(61,139,255,0.5);
+    }
+
+    .qa-grid { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+
+    .qa-row {
+      display: flex; align-items: flex-start; gap: 8px;
+      background: #ffffff; border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 5px 9px;
+    }
+
+    .qa-num {
+      font-size: 9px; font-weight: 800; font-family: var(--mono);
+      color: var(--blue); background: var(--blue-dim);
+      border: 1px solid rgba(61,139,255,0.2); border-radius: 4px;
+      padding: 1px 5px; flex-shrink: 0; margin-top: 1px;
+    }
+
+    .qa-label { font-size: 9px; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1px; }
+    .qa-val { font-size: 11px; font-weight: 600; color: var(--text); }
+
+    .nlp-box {
+      font-size: 11px; line-height: 1.55;
+      background: #ffffff;
+      border: 1px solid rgba(61,139,255,0.2);
+      border-left: 3px solid var(--blue);
+      padding: 10px 12px; border-radius: var(--radius-sm);
+      color: var(--text-2); white-space: pre-line; margin-bottom: 10px;
+      max-height: 130px; overflow-y: auto;
+    }
+
+    /* DECISION BOX */
+    .decision-box {
+      background: linear-gradient(135deg, rgba(255,170,0,0.08), rgba(255,68,68,0.08));
+      border: 1px solid rgba(255,170,0,0.45);
+      border-radius: var(--radius-sm); padding: 12px;
+      animation: decision-pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes decision-pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(255,170,0,0); border-color: rgba(255,170,0,0.45); }
+      50% { box-shadow: 0 0 18px rgba(255,170,0,0.35); border-color: rgba(255,170,0,0.75); }
+    }
+
+    .decision-box-header {
+      display: flex; align-items: center; gap: 7px;
+      font-size: 11px; font-weight: 700; color: var(--amber);
+      margin-bottom: 6px; letter-spacing: 0.02em;
+    }
+
+    .decision-box-desc { font-size: 11px; color: var(--text-2); line-height: 1.5; margin-bottom: 10px; }
+
+    /* TIMELINE */
+    .timeline-list { max-height: 180px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
+
+    .timeline-item {
+      font-size: 11px; padding: 7px 10px; border-radius: var(--radius-sm);
+      background: #ffffff; border: 1px solid var(--border);
+      border-left: 3px solid var(--text-3);
+    }
+
+    .timeline-item.info { border-left-color: var(--blue); }
+    .timeline-item.warning { border-left-color: var(--amber); }
+    .timeline-item.danger { border-left-color: var(--red); }
+    .timeline-item.success { border-left-color: var(--green); }
+
+    .tl-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px; }
+    .tl-title { font-weight: 700; color: var(--text); font-size: 11px; }
+    .tl-time { color: var(--text-3); font-size: 10px; font-family: var(--mono); }
+    .tl-msg { color: var(--text-2); line-height: 1.4; }
+
+    /* HUD */
+    .hud-stat {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 14px; background: var(--panel-2);
+      border: 1px solid var(--border); border-radius: var(--radius);
+    }
+
+    .hud-label { font-size: 9px; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 4px; }
+    .hud-val { font-size: 22px; font-weight: 800; font-family: var(--mono); color: var(--blue); line-height: 1; }
+    .hud-val span { font-size: 12px; font-weight: 600; color: var(--text-3); }
+    .hud-divider { width: 1px; height: 40px; background: var(--border); }
+
+    /* MISSION INFO */
+    .mission-info-grid { display: flex; flex-direction: column; gap: 5px; }
+    .mission-info-row { display: flex; align-items: baseline; gap: 6px; font-size: 12px; color: var(--text-2); }
+    .mission-info-key { font-size: 10px; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.05em; flex-shrink: 0; min-width: 80px; }
+    .mission-info-val { font-weight: 600; color: var(--text); }
+
+    /* ADMIN */
+    #adminView { display: none; width: 100%; height: 100%; padding: 24px; overflow-y: auto; flex-direction: column; gap: 20px; }
+    #adminView.active { display: flex; }
+
+    .admin-header { display: flex; justify-content: space-between; align-items: flex-end; }
+    .admin-title { font-size: 22px; font-weight: 800; letter-spacing: -0.03em; background: linear-gradient(135deg, var(--text), var(--text-2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .admin-subtitle { font-size: 12px; color: var(--text-3); margin-top: 4px; }
+
+    .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+
+    .kpi-card {
+      background: var(--panel); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 18px;
+      position: relative; overflow: hidden;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+
+    .kpi-card:hover { border-color: var(--border-bright); transform: translateY(-2px); }
+
+    .kpi-card::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 2px; }
+    .kpi-card.kpi-green::before { background: linear-gradient(90deg, transparent, var(--green), transparent); }
+    .kpi-card.kpi-blue::before { background: linear-gradient(90deg, transparent, var(--blue), transparent); }
+    .kpi-card.kpi-amber::before { background: linear-gradient(90deg, transparent, var(--amber), transparent); }
+    .kpi-card.kpi-cyan::before { background: linear-gradient(90deg, transparent, var(--cyan), transparent); }
+
+    .kpi-label { font-size: 10px; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 8px; }
+    .kpi-val { font-size: 24px; font-weight: 900; font-family: var(--mono); letter-spacing: -0.02em; line-height: 1; margin-bottom: 5px; }
+    .kpi-card.kpi-green .kpi-val { color: var(--green); }
+    .kpi-card.kpi-blue .kpi-val { color: var(--blue); }
+    .kpi-card.kpi-amber .kpi-val { color: var(--amber); }
+    .kpi-card.kpi-cyan .kpi-val { color: var(--cyan); }
+    .kpi-sub { font-size: 11px; color: var(--text-3); }
+
+    .table-card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; overflow-x: auto; }
+    .table-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+    .table-title { font-size: 13px; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 8px; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th { padding: 8px 12px; border-bottom: 1px solid var(--border); color: var(--text-3); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; text-align: left; white-space: nowrap; }
+    td { padding: 11px 12px; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tbody tr:hover td { background: rgba(15,23,42,0.035); }
+
+    code { font-family: var(--mono); font-size: 11px; color: var(--cyan); background: rgba(0,212,255,0.07); padding: 1px 6px; border-radius: 4px; border: 1px solid rgba(0,212,255,0.15); }
+
+    .ambulance-icon, .fire-icon, .police-icon { font-size: 22px; text-align: center; }
+    .obstacle-icon { font-size: 20px; text-align: center; }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <div class="brand">
+      <div class="brand-logo">🚑</div>
+      <div class="brand-text">
+        <div class="brand-name">GeoAgentic</div>
+        <div class="brand-sub">Emergency Operations Platform</div>
+      </div>
+      <div class="brand-badge">Prototype</div>
+    </div>
+
+    <div class="nav-tabs">
+      <button id="tabControlRoom" class="tab-btn active" onclick="switchTab('controlRoom')">
+        <span>🚨</span> Control Room
+      </button>
+      <button id="tabDriver" class="tab-btn" onclick="switchTab('driver')">
+        <span>🚐</span> Driver HUD
+      </button>
+      <button id="tabAdmin" class="tab-btn" onclick="switchTab('admin')">
+        <span>⚙️</span> Admin &amp; System
+      </button>
+    </div>
+
+    <div class="system-status">
+      <div class="ai-engine-label">
+        <div class="ai-engine-icon">🤖</div>
+        <div class="ai-engine-text-group">
+          <span class="ai-engine-name">GeoAgentic AI Engine</span>
+          <span class="ai-engine-sub">Agentic Routing · Live</span>
+        </div>
+        <div class="ai-engine-pulse"></div>
+      </div>
+      <button class="reset-btn" onclick="resetMissionAndSystem()">
+        <span>↺</span> Reset System
+      </button>
+      <div class="status-pill">
+        <div class="status-dot"></div>
+        <span id="sysStatusText" class="status-text">Graph Ready · OSMnx 9km</span>
+      </div>
+    </div>
+  </header>
+
+
+  <div class="workspace">
+
+    <!-- DASHBOARD 1: CONTROL ROOM -->
+    <div id="controlRoomView" class="dashboard-view active">
+      <div class="sidebar">
+
+        <div id="dispatchCard" class="card">
+          <div class="card-header">
+            <div class="card-title">
+              <div class="card-title-icon blue">🚀</div>
+              Mission Dispatch
+            </div>
+            <span class="badge badge-info">DISPATCHER</span>
+          </div>
+
+          <!-- Compact summary shown when mission is active -->
+          <div class="dispatch-compact-summary">
+            <span id="compactVehicle" class="dispatch-compact-vehicle">AMB-104</span>
+            <span id="compactPriority" class="dispatch-compact-badge">● EN ROUTE</span>
+          </div>
+
+          <div class="dispatch-fields">
+            <div class="field">
+              <label>Emergency Vehicle</label>
+              <select id="vehicleSelect">
+                <option value="AMB-104">AMB-104 — Paramedic ALS Unit (Rajesh Kumar)</option>
+                <option value="AMB-108">AMB-108 — Rapid Critical Care (Anita Sharma)</option>
+                <option value="FIRE-201">FIRE-201 — Heavy Water Tender (Vikram Singh)</option>
+                <option value="FIRE-202">FIRE-202 — Rescue Tender 202 (Karthik R.)</option>
+                <option value="POL-301">POL-301 — Traffic Interceptor (Insp. Suresh)</option>
+                <option value="POL-302">POL-302 — Rapid Response (SI Priya M.)</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <div class="field-row">
+                <label>Source Address</label>
+                <a class="field-link" onclick="fillDemoAddresses()">⚡ Fill Demo</a>
+              </div>
+              <input id="sourceAddr" placeholder="e.g. Koramangala Sony World Junction, Bengaluru" />
+            </div>
+
+            <div class="field">
+              <label>Destination Address</label>
+              <input id="destAddr" placeholder="e.g. Forum Mall, Koramangala, Bengaluru" />
+            </div>
+
+            <div class="field" style="margin-bottom: 12px;">
+              <label>Call Priority Code</label>
+              <select id="prioritySelect">
+                <option value="Critical / Code Red">🔴 Critical / Code Red — Life Threatening</option>
+                <option value="Urgent / Code Yellow">🟡 Urgent / Code Yellow — Serious Emergency</option>
+                <option value="Routine / Code Blue">🔵 Routine / Code Blue — Standard Response</option>
+              </select>
+            </div>
+
+            <button id="dispatchBtn" class="btn btn-primary" onclick="planAndDispatch()">
+              <span>🗺️</span> Plan &amp; Dispatch Mission
+            </button>
+          </div>
+
+          <div class="btn-row" style="margin-top: 8px;">
+            <button id="obstacleSimBtn" class="btn btn-warning" onclick="simulateObstacleControl()" disabled>
+              <span>🚧</span> Simulate Obstacle
+            </button>
+            <button id="resetMissionBtn" class="btn btn-ghost" onclick="resetMissionAndSystem()">
+              <span>↺</span> Reset
+            </button>
+          </div>
+        </div>
+
+
+        <div id="statsCard" class="card" style="display: none;">
+          <div class="card-header">
+            <div class="card-title">
+              <div class="card-title-icon green">📡</div>
+              Live Telemetry
+            </div>
+            <span id="activeMissionBadge" class="badge badge-success">EN ROUTE</span>
+          </div>
+          <div class="telemetry-grid">
+            <div class="tele-item">
+              <div class="tele-label">Vehicle</div>
+              <div class="tele-val" id="statVehicle" style="font-size:12px;">AMB-104</div>
+            </div>
+            <div class="tele-item">
+              <div class="tele-label">Distance</div>
+              <div class="tele-val" id="statDist">–</div>
+            </div>
+            <div class="tele-item">
+              <div class="tele-label">Planned ETA</div>
+              <div class="tele-val" id="statEta">–</div>
+            </div>
+            <div id="delayCell" class="tele-item warn" style="display:none;">
+              <div class="tele-label">Delay Added</div>
+              <div class="tele-val" id="statDelay">–</div>
+            </div>
+            <div id="causeCell" class="tele-item caution full" style="display:none;">
+              <div class="tele-label">Identified Cause</div>
+              <div class="tele-val" id="statCause">–</div>
+            </div>
+          </div>
+        </div>
+
+
+        <!-- agentCard moved to right AI panel -->
+
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">
+              <div class="card-title-icon amber">📜</div>
+              Audit Timeline
+            </div>
+            <span class="badge badge-info">LIVE LOG</span>
+          </div>
+          <div id="timelineList" class="timeline-list">
+            <div class="timeline-item info">
+              <div class="tl-header">
+                <span class="tl-title">System Ready</span>
+                <span class="tl-time">00:00:00</span>
+              </div>
+              <div class="tl-msg">Control room logging active. Select source/dest to dispatch.</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="map-container">
+        <div id="mainMap"></div>
+      </div>
+
+      <!-- RIGHT AI ENGINE PANEL -->
+      <div id="aiRightPanel" class="ai-right-panel">
+
+        <!-- Panel header -->
+        <div class="ai-panel-header">
+          <div class="ai-panel-icon">🤖</div>
+          <div class="ai-panel-title-group">
+            <div class="ai-panel-title">GeoAgentic AI Engine</div>
+            <div class="ai-panel-sub">Agentic Decision Support · Live</div>
+          </div>
+          <span id="agentBadge" class="badge badge-info">STANDBY</span>
+        </div>
+
+        <!-- Idle state placeholder -->
+        <div id="agentIdlePlaceholder" class="card" style="text-align:center; padding: 28px 16px; border-style: dashed; border-color: rgba(61,139,255,0.2);">
+          <div style="font-size:32px; margin-bottom:10px;">🛰️</div>
+          <div style="font-size:12px; font-weight:700; color:var(--text-2); margin-bottom:6px;">Awaiting Mission Dispatch</div>
+          <div style="font-size:11px; color:var(--text-3); line-height:1.5;">Once a vehicle is dispatched, the AI engine will evaluate the route, detect deviations, and propose rerouting decisions here.</div>
+        </div>
+
+        <!-- Agent card (shown after dispatch) -->
+        <div id="agentCard" class="agent-card" style="display: none;">
+          <div class="card-header">
+            <div class="card-title">
+              <div class="card-title-icon blue">📊</div>
+              Route Intelligence Report
+            </div>
+          </div>
+
+          <div class="confidence-bar-wrapper">
+            <div class="confidence-header">
+              <span class="confidence-label">Dynamic Statistical Confidence</span>
+              <span id="confVal" class="confidence-val">95%</span>
+            </div>
+            <div class="confidence-bar">
+              <div class="confidence-fill" id="confidenceFill"></div>
+            </div>
+          </div>
+
+          <div class="qa-grid">
+            <div class="qa-row">
+              <span class="qa-num">1</span>
+              <div>
+                <div class="qa-label">Deviation Status</div>
+                <div class="qa-val" id="qDevStatus">Monitoring trajectory…</div>
+              </div>
+            </div>
+            <div class="qa-row">
+              <span class="qa-num">2</span>
+              <div>
+                <div class="qa-label">Cause Identification</div>
+                <div class="qa-val" id="qCause">None detected</div>
+              </div>
+            </div>
+            <div class="qa-row">
+              <span class="qa-num">3</span>
+              <div>
+                <div class="qa-label">Delay Impact</div>
+                <div class="qa-val" id="qDelay">On Schedule</div>
+              </div>
+            </div>
+            <div class="qa-row">
+              <span class="qa-num">4</span>
+              <div>
+                <div class="qa-label">Recommended Bypass</div>
+                <div class="qa-val" id="qReroute">Original Arterial Route</div>
+              </div>
+            </div>
+            <div class="qa-row">
+              <span class="qa-num">5</span>
+              <div>
+                <div class="qa-label">Backup Dispatch</div>
+                <div class="qa-val" id="qBackup">Keep Primary Vehicle</div>
+              </div>
+            </div>
+          </div>
+
+          <div id="agentNlp" class="nlp-box"></div>
+        </div>
+
+        <!-- Decision box always at bottom of right panel -->
+        <div id="decisionActions" class="decision-box" style="display: none;">
+          <div class="decision-box-header">
+            <span>⚠️</span> Action Required: Agent Decision
+          </div>
+          <div id="proposalDesc" class="decision-box-desc">
+            Proposed green arterial bypass route to avoid obstacle ahead.
+          </div>
+          <div class="btn-row" style="margin-top: 6px;">
+            <button class="btn btn-success" onclick="respondDecision('approve')">
+              <span>✅</span> Approve Reroute
+            </button>
+            <button class="btn btn-danger" onclick="respondDecision('reject')">
+              <span>✖</span> Reject &amp; Hold
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+
+    <!-- DASHBOARD 2: DRIVER HUD -->
+    <div id="driverView" class="dashboard-view">
+      <div class="driver-sidebar">
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">
+              <div class="card-title-icon blue">🚐</div>
+              Vehicle Selector
+            </div>
+            <span class="badge badge-info">TACTICAL HUD</span>
+          </div>
+          <select id="driverVehicleSelect" onchange="loadDriverHUD()">
+            <option value="AMB-104">AMB-104 — Paramedic ALS Unit (Rajesh Kumar)</option>
+            <option value="AMB-108">AMB-108 — Rapid Critical Care (Anita Sharma)</option>
+            <option value="FIRE-201">FIRE-201 — Heavy Water Tender (Vikram Singh)</option>
+            <option value="FIRE-202">FIRE-202 — Rescue Tender 202 (Karthik R.)</option>
+            <option value="POL-301">POL-301 — Traffic Interceptor (Insp. Suresh)</option>
+          </select>
+        </div>
+
+        <div class="card" style="border-color: rgba(0,232,122,0.2); background: linear-gradient(180deg, rgba(0,232,122,0.04), var(--panel-2));">
+          <div class="card-header">
+            <div class="card-title">
+              <div class="card-title-icon green">📍</div>
+              Assigned Mission
+            </div>
+            <span id="driverMissionStatus" class="badge badge-success">EN ROUTE</span>
+          </div>
+          <div class="mission-info-grid">
+            <div class="mission-info-row">
+              <span class="mission-info-key">Mission ID</span>
+              <span class="mission-info-val" id="dMissionId">MSN-101</span>
+            </div>
+            <div class="mission-info-row">
+              <span class="mission-info-key">Priority</span>
+              <span class="mission-info-val" id="dPriority" style="color:var(--red);">Critical / Code Red</span>
+            </div>
+            <div class="mission-info-row">
+              <span class="mission-info-key">Origin</span>
+              <span class="mission-info-val" id="dOrigin">Koramangala Sony World</span>
+            </div>
+            <div class="mission-info-row">
+              <span class="mission-info-key">Destination</span>
+              <span class="mission-info-val" id="dDest">Forum Mall Koramangala</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="hud-stat">
+          <div>
+            <div class="hud-label">Vehicle Speed</div>
+            <div id="dSpeed" class="hud-val">42 <span>KM/H</span></div>
+          </div>
+          <div class="hud-divider"></div>
+          <div>
+            <div class="hud-label">Estimated ETA</div>
+            <div id="dEta" class="hud-val">4.2 <span>MIN</span></div>
+          </div>
+        </div>
+
+        <div class="card" style="border-color: rgba(255,68,68,0.3); background: linear-gradient(180deg, rgba(255,68,68,0.04), var(--panel-2));">
+          <div class="card-header">
+            <div class="card-title">
+              <div class="card-title-icon red">🚨</div>
+              Route Deviation Report
+            </div>
+          </div>
+          <div style="font-size:11px; color:var(--text-3); margin-bottom:10px; line-height:1.5;">
+            Encountered unmapped blockage or road hazard? Report directly to Control Room.
+          </div>
+          <div class="field">
+            <label>Obstacle Reason</label>
+            <select id="driverReasonSelect">
+              <option value="Road Accident / Collision">Road Accident / Collision Ahead</option>
+              <option value="Urban Flooding / Waterlogging">Severe Waterlogging / Flood</option>
+              <option value="Gridlock / Traffic Congestion">Severe Gridlock / Traffic Standstill</option>
+              <option value="Unannounced Roadwork">Unannounced Construction / Barricade</option>
+              <option value="Hazardous Debris">Tree Fall / Fallen Power Cables</option>
+            </select>
+          </div>
+          <div class="field" style="margin-bottom:10px;">
+            <label>Driver Note / Remarks</label>
+            <input id="driverNoteInput" placeholder="e.g. 2 cars blocking both lanes near junction" />
+          </div>
+          <button class="btn btn-danger" onclick="submitDriverReport()">
+            <span>🚨</span> Report Blockage to Control Room
+          </button>
+        </div>
+
+      </div>
+
+      <div class="map-container">
+        <div id="driverMap"></div>
+      </div>
+    </div>
+
+
+    <!-- DASHBOARD 3: ADMIN -->
+    <div id="adminView" class="dashboard-view">
+      <div class="admin-header">
+        <div>
+          <div class="admin-title">⚙️ System Overview</div>
+          <div class="admin-subtitle">Administrative telemetry, OSMnx graph coverage stats, multi-vehicle fleet status, and backend integration state.</div>
+        </div>
+        <button class="btn btn-primary" onclick="refreshAdminData()" style="width:auto; padding:9px 18px;">
+          <span>↺</span> Refresh State
+        </button>
+      </div>
+
+      <div class="kpi-grid">
+        <div class="kpi-card kpi-green">
+          <div class="kpi-label">System Status</div>
+          <div id="admStatus" class="kpi-val">HEALTHY</div>
+          <div class="kpi-sub">Uptime: <span id="admUptime">0h 0m</span></div>
+        </div>
+        <div class="kpi-card kpi-blue">
+          <div class="kpi-label">Fleet Size</div>
+          <div id="admFleetCount" class="kpi-val">6</div>
+          <div class="kpi-sub">Ambulances, Fire, Police</div>
+        </div>
+        <div class="kpi-card kpi-cyan">
+          <div class="kpi-label">OSMnx Road Graph</div>
+          <div id="admGraphNodes" class="kpi-val">34,109</div>
+          <div class="kpi-sub">Nodes · Bengaluru 9km radius</div>
+        </div>
+        <div class="kpi-card kpi-amber">
+          <div class="kpi-label">Dispatch Missions</div>
+          <div id="admMissionsCount" class="kpi-val">0</div>
+          <div class="kpi-sub">Live tracking active</div>
+        </div>
+      </div>
+
+      <div class="table-card">
+        <div class="table-header">
+          <div class="table-title">🚐 Emergency Fleet Registry</div>
+          <span class="badge badge-info">6 VEHICLES</span>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Vehicle ID</th>
+              <th>Type</th>
+              <th>Callsign</th>
+              <th>Driver Name</th>
+              <th>Status</th>
+              <th>Location (Lat, Lon)</th>
+              <th>Fuel / Battery</th>
+            </tr>
+          </thead>
+          <tbody id="adminFleetTable"></tbody>
+        </table>
+      </div>
+
+      <div class="table-card">
+        <div class="table-header">
+          <div class="table-title">🔌 Backend Integration &amp; Module Status</div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Module Name</th>
+              <th>Component Path</th>
+              <th>Status</th>
+              <th>Details / Configuration</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><b>FastAPI Route Engine</b></td>
+              <td><code>backend/app/api.py</code></td>
+              <td><span class="badge badge-success">ACTIVE (PORT 8000)</span></td>
+              <td>REST endpoints for routing, agent evaluation, timeline logging</td>
+            </tr>
+            <tr>
+              <td><b>OSMnx Road Graph Cache</b></td>
+              <td><code>backend/app/graph_utils.py</code></td>
+              <td><span class="badge badge-success">CACHED (bengaluru.graphml)</span></td>
+              <td>Center (12.9250, 77.5780), 9000m radius, emergency penalties</td>
+            </tr>
+            <tr>
+              <td><b>Deviation Detector</b></td>
+              <td><code>backend/app/detector.py</code></td>
+              <td><span class="badge badge-success">RUNNING</span></td>
+              <td>Perpendicular distance threshold 50m, 3 consecutive ping debounce</td>
+            </tr>
+            <tr>
+              <td><b>GeoAgent Decision Engine</b></td>
+              <td><code>backend/app/decision_engine.py</code></td>
+              <td><span class="badge badge-success">DYNAMIC CONFIDENCE</span></td>
+              <td>Solves 5 control room questions; dynamic statistical confidence formula</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const API_BASE = ""; // Uses Vite proxy to http://127.0.0.1:8000
+
+    let mainMap = null;
+    let driverMap = null;
+
+    let mainRouteLine = null;
+    let mainRerouteLine = null;
+    let mainVehicleMarker = null;
+    let mainEndpointMarkers = [];
+    let mainObstacleMarkers = [];
+    let animTimer = null;
+
+    let currentMission = null;
+    let pingIndex = 0;
+    let currentVehicleId = "AMB-104";
+    let activeRecommendation = null;
+    let activeBlockedEdge = null;  // The road segment blocked by the current obstacle
+
+    function initMaps() {
+      mainMap = L.map("mainMap").setView([12.9352, 77.6146], 14);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        attribution: "&copy; OpenStreetMap"
+      }).addTo(mainMap);
+
+      driverMap = L.map("driverMap").setView([12.9352, 77.6146], 15);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        attribution: "&copy; OpenStreetMap"
+      }).addTo(driverMap);
+    }
+
+    function switchTab(tab) {
+      document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+      document.querySelectorAll(".dashboard-view").forEach(v => v.classList.remove("active"));
+
+      if (tab === "controlRoom") {
+        document.getElementById("tabControlRoom").classList.add("active");
+        document.getElementById("controlRoomView").classList.add("active");
+        setTimeout(() => mainMap.invalidateSize(), 100);
+      } else if (tab === "driver") {
+        document.getElementById("tabDriver").classList.add("active");
+        document.getElementById("driverView").classList.add("active");
+        setTimeout(() => driverMap.invalidateSize(), 100);
+        loadDriverHUD();
+      } else if (tab === "admin") {
+        document.getElementById("tabAdmin").classList.add("active");
+        document.getElementById("adminView").classList.add("active");
+        refreshAdminData();
+      }
+    }
+
+    function clearMainMap() {
+      if (mainRouteLine) { mainMap.removeLayer(mainRouteLine); mainRouteLine = null; }
+      if (mainRerouteLine) { mainMap.removeLayer(mainRerouteLine); mainRerouteLine = null; }
+      if (mainVehicleMarker) { mainMap.removeLayer(mainVehicleMarker); mainVehicleMarker = null; }
+      mainEndpointMarkers.forEach(m => mainMap.removeLayer(m));
+      mainEndpointMarkers = [];
+      mainObstacleMarkers.forEach(m => mainMap.removeLayer(m));
+      mainObstacleMarkers = [];
+      if (animTimer) { clearInterval(animTimer); animTimer = null; }
+    }
+
+    async function resetMissionAndSystem() {
+      if (animTimer) { clearInterval(animTimer); animTimer = null; }
+      clearMainMap();
+
+      if (driverMap) {
+        driverMap.eachLayer(layer => {
+          if (layer instanceof L.Polyline || layer instanceof L.Marker) driverMap.removeLayer(layer);
+        });
+      }
+
+      currentMission = null;
+      activeRecommendation = null;
+      activeBlockedEdge = null;
+      pingIndex = 0;
+
+      document.getElementById("statsCard").style.display = "none";
+      document.getElementById("agentCard").style.display = "none";
+      document.getElementById("decisionActions").style.display = "none";
+      document.getElementById("delayCell").style.display = "none";
+      document.getElementById("causeCell").style.display = "none";
+      document.getElementById("obstacleSimBtn").disabled = true;
+      document.getElementById("dispatchBtn").disabled = false;
+      // Restore full dispatch form
+      document.getElementById("dispatchCard").classList.remove("dispatch-card-compact");
+      // Restore right panel idle state
+      const aiPlaceholder = document.getElementById("agentIdlePlaceholder");
+      if (aiPlaceholder) aiPlaceholder.style.display = "block";
+      const aiRightBadge = document.getElementById("agentBadge");
+      if (aiRightBadge) { aiRightBadge.className = "badge badge-info"; aiRightBadge.textContent = "STANDBY"; }
+      const aiRightPanel = document.getElementById("aiRightPanel");
+      if (aiRightPanel) aiRightPanel.scrollTop = 0;
+
+      const srcInput = document.getElementById("sourceAddr");
+      if (srcInput) srcInput.value = "";
+      const destInput = document.getElementById("destAddr");
+      if (destInput) destInput.value = "";
+
+      const driverStatus = document.getElementById("driverMissionStatus");
+      if (driverStatus) { driverStatus.className = "badge badge-warning"; driverStatus.textContent = "STANDBY"; }
+      const dMissionId = document.getElementById("dMissionId");
+      if (dMissionId) dMissionId.textContent = "NONE";
+      const dPriority = document.getElementById("dPriority");
+      if (dPriority) dPriority.textContent = "–";
+      const dOrigin = document.getElementById("dOrigin");
+      if (dOrigin) dOrigin.textContent = "Station Base";
+      const dDest = document.getElementById("dDest");
+      if (dDest) dDest.textContent = "Standby Zone";
+      const dEta = document.getElementById("dEta");
+      if (dEta) dEta.textContent = "0.0 MIN";
+
+      try { await fetch(`${API_BASE}/api/system/reset`, { method: "POST" }); } catch (e) { console.error("Reset API call:", e); }
+
+      await refreshTimeline();
+      loadDriverHUD();
+      refreshAdminData();
+
+      const statusText = document.getElementById("sysStatusText");
+      if (statusText) {
+        const orig = statusText.textContent;
+        statusText.textContent = "System Reset ✓";
+        setTimeout(() => { statusText.textContent = orig; }, 3000);
+      }
+    }
+
+    function fillDemoAddresses() {
+      document.getElementById("sourceAddr").value = "Koramangala Sony World Junction, Bengaluru";
+      document.getElementById("destAddr").value = "Forum Mall, Koramangala, Bengaluru";
+    }
+
+    async function planAndDispatch() {
+      const vehicleId = document.getElementById("vehicleSelect").value;
+      const source = document.getElementById("sourceAddr").value.trim();
+      const destination = document.getElementById("destAddr").value.trim();
+      const priority = document.getElementById("prioritySelect").value;
+
+      if (!source || !destination) { alert("Please enter both source and destination addresses."); return; }
+
+      clearMainMap();
+      currentVehicleId = vehicleId;
+      document.getElementById("dispatchBtn").disabled = true;
+
+      try {
+        const res = await fetch(`${API_BASE}/api/route`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ source, destination, vehicle_id: vehicleId, priority }),
+        });
+
+        if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.detail || "Dispatch failed"); }
+
+        const data = await res.json();
+        currentMission = data;
+        pingIndex = 0;
+
+        const latlngs = data.planned_route.coords.map(c => [c[0], c[1]]);
+        mainRouteLine = L.polyline(latlngs, { color: "#3d8bff", weight: 5, opacity: 0.9 }).addTo(mainMap);
+        mainMap.fitBounds(mainRouteLine.getBounds(), { padding: [40, 40] });
+
+        mainEndpointMarkers.push(L.marker(data.source_coords, { title: "Origin" }).addTo(mainMap));
+        mainEndpointMarkers.push(L.marker(data.dest_coords, { title: "Destination" }).addTo(mainMap));
+
+        document.getElementById("statVehicle").textContent = vehicleId;
+        document.getElementById("statDist").textContent = `${(data.planned_route.length_m / 1000).toFixed(2)} km`;
+        document.getElementById("statEta").textContent = `${(data.planned_route.eta_s / 60).toFixed(1)} min`;
+        document.getElementById("statsCard").style.display = "block";
+        document.getElementById("obstacleSimBtn").disabled = false;
+
+        // Collapse dispatch form to compact mode to free sidebar space
+        document.getElementById("compactVehicle").textContent = `${vehicleId} · ${source.split(',')[0]}`;
+        document.getElementById("compactPriority").textContent = `● ${priority.split('/')[0].trim()}`;
+        document.getElementById("dispatchCard").classList.add("dispatch-card-compact");
+
+        fetch(`${API_BASE}/api/trip/start`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ vehicle_id: vehicleId, planned_route_coords: data.planned_route.coords, destination_lat: data.dest_coords[0], destination_lon: data.dest_coords[1] }),
+        }).catch(() => { });
+
+        fetchAgentRecommendation(data.source_coords);
+        animateVehicle(data.pings);
+        refreshTimeline();
+      } catch (e) {
+        alert(`Error: ${e.message}`);
+      } finally {
+        document.getElementById("dispatchBtn").disabled = false;
+      }
+    }
+
+    function animateVehicle(pings) {
+      if (!pings || pings.length === 0) return;
+      const iconHtml = currentVehicleId.startsWith("FIRE") ? "🚒" : (currentVehicleId.startsWith("POL") ? "🚓" : "🚑");
+      const icon = L.divIcon({ html: iconHtml, className: "ambulance-icon", iconSize: [28, 28] });
+      mainVehicleMarker = L.marker([pings[0].lat, pings[0].lon], { icon }).addTo(mainMap);
+
+      animTimer = setInterval(() => {
+        if (pingIndex >= pings.length) { clearInterval(animTimer); animTimer = null; return; }
+        const p = pings[pingIndex];
+        mainVehicleMarker.setLatLng([p.lat, p.lon]);
+        fetch(`${API_BASE}/api/trip/ping`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ vehicle_id: currentVehicleId, lat: p.lat, lon: p.lon }) }).catch(() => { });
+        pingIndex++;
+      }, 120);
+    }
+
+    async function fetchAgentRecommendation(currentPos, blockedEdge = null, incidentType = "accident") {
+      if (!currentMission) return;
+      const agentCardEl = document.getElementById("agentCard");
+      const placeholder = document.getElementById("agentIdlePlaceholder");
+      const rightPanel = document.getElementById("aiRightPanel");
+
+      // Show agent card, hide idle placeholder
+      if (placeholder) placeholder.style.display = "none";
+      agentCardEl.style.display = "block";
+
+      // Scroll right panel to top so full content is visible
+      if (rightPanel) rightPanel.scrollTop = 0;
+
+      document.getElementById("agentBadge").className = "badge badge-warning";
+      document.getElementById("agentBadge").textContent = "EVALUATING";
+
+      try {
+        const res = await fetch(`${API_BASE}/api/agent/recommend`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            vehicle_id: currentVehicleId,
+            current_lat: currentPos[0], current_lon: currentPos[1],
+            destination_lat: currentMission.dest_coords[0], destination_lon: currentMission.dest_coords[1],
+            planned_route_coords: currentMission.planned_route.coords,
+            blocked_edge: blockedEdge, incident_type: incidentType,
+          }),
+        });
+
+        if (!res.ok) return;
+        const data = await res.json();
+        activeRecommendation = data;
+
+        const confPct = Math.round(data.confidence_score * 100);
+        document.getElementById("confVal").textContent = `${confPct}%`;
+        const fill = document.getElementById("confidenceFill");
+        if (fill) fill.style.width = `${confPct}%`;
+
+        if (data.has_deviated) {
+          document.getElementById("agentBadge").className = "badge badge-danger";
+          document.getElementById("agentBadge").textContent = "DEVIATION ALERT";
+          document.getElementById("qDevStatus").innerHTML = `<span style="color:var(--red);font-weight:700;">⚠️ DEVIATED</span> near obstacle`;
+        } else {
+          document.getElementById("agentBadge").className = "badge badge-success";
+          document.getElementById("agentBadge").textContent = "ON TRAJECTORY";
+          document.getElementById("qDevStatus").innerHTML = `<span style="color:var(--green);">✅ ON ROUTE</span> (Arterial Path)`;
+        }
+
+        document.getElementById("qCause").textContent = `${data.cause} — ${data.cause_details}`;
+        document.getElementById("qDelay").textContent = data.delay_expected_s > 0 ? `+${(data.delay_expected_s / 60).toFixed(1)} min delay` : "On Schedule";
+        document.getElementById("qReroute").textContent = data.best_alternative_route && data.best_alternative_route.is_rerouted ? "Green Bypass Calculated" : "Maintain Primary Route";
+        document.getElementById("qBackup").textContent = data.should_dispatch_backup ? `⚠️ DISPATCH ${data.recommended_backup_vehicle_id}` : "Keep Primary Vehicle";
+        document.getElementById("agentNlp").innerHTML = data.natural_language_explanation.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+        if (blockedEdge || data.has_deviated || data.should_dispatch_backup) {
+          const decisionBox = document.getElementById("decisionActions");
+          decisionBox.style.display = "block";
+          document.getElementById("proposalDesc").textContent = data.should_dispatch_backup
+            ? `Agent recommends dispatching backup vehicle ${data.recommended_backup_vehicle_id} from ${data.backup_station_name} (ETA: ${(data.backup_eta_s / 60).toFixed(1)}m).`
+            : `Agent computed green arterial bypass around blockage (+${(data.delay_expected_s / 60).toFixed(1)}m delay).`;
+          // Scroll right panel to bottom so decision buttons are fully visible
+          const rightPanel = document.getElementById("aiRightPanel");
+          if (rightPanel) setTimeout(() => { rightPanel.scrollTop = rightPanel.scrollHeight; }, 150);
+        }
+
+        refreshTimeline();
+      } catch (e) { console.error(e); }
+    }
+
+    function haversineM(p1, p2) {
+      const R = 6371000;
+      const toRad = x => (x * Math.PI) / 180;
+      const dLat = toRad(p2[0] - p1[0]);
+      const dLon = toRad(p2[1] - p1[1]);
+      const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(p1[0])) * Math.cos(toRad(p2[0])) * Math.sin(dLon / 2) ** 2;
+      return 2 * R * Math.asin(Math.sqrt(a));
+    }
+
+    function animateAlongCoords(coordsList) {
+      if (!coordsList || coordsList.length === 0 || !mainVehicleMarker) return;
+      if (animTimer) clearInterval(animTimer);
+      let i = 0;
+      animTimer = setInterval(() => {
+        if (i >= coordsList.length) {
+          clearInterval(animTimer); animTimer = null;
+          const badge = document.getElementById("activeMissionBadge");
+          if (badge) { badge.className = "badge badge-success"; badge.textContent = "ARRIVED (REROUTED)"; }
+          return;
+        }
+        const pt = coordsList[i];
+        mainVehicleMarker.setLatLng(pt);
+        fetch(`${API_BASE}/api/trip/ping`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ vehicle_id: currentVehicleId, lat: pt[0], lon: pt[1] }) }).catch(() => { });
+        i++;
+      }, 120);
+    }
+
+    async function respondDecision(decision) {
+      if (!currentMission || !activeRecommendation) {
+        console.error("respondDecision: missing currentMission or activeRecommendation", { currentMission, activeRecommendation });
+        showToast("⚠️ No active recommendation to act on. Please dispatch a mission first.", "warning");
+        return;
+      }
+
+      document.querySelectorAll("#decisionActions .btn").forEach(b => { b.disabled = true; });
+
+      if (decision === "reject") {
+        // Reject: just log and close
+        try {
+          await fetch(`${API_BASE}/api/missions/decision`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              mission_id: currentMission.mission_id,
+              decision: "reject",
+              action_type: "reroute",
+            }),
+          });
+        } catch (_) {}
+        document.getElementById("decisionActions").style.display = "none";
+        showToast("❌ Reroute rejected. Vehicle instructed to hold.", "danger");
+        document.querySelectorAll("#decisionActions .btn").forEach(b => { b.disabled = false; });
+        refreshTimeline();
+        return;
+      }
+
+      // ── APPROVE: compute real new route from vehicle's current position ──
+      if (!mainVehicleMarker) {
+        showToast("⚠️ Cannot reroute: vehicle position unknown.", "warning");
+        document.querySelectorAll("#decisionActions .btn").forEach(b => { b.disabled = false; });
+        return;
+      }
+
+      const currentLatLng = mainVehicleMarker.getLatLng();
+      const [destLat, destLon] = currentMission.dest_coords;
+
+      showToast("🗺️ Computing real reroute from live vehicle position…", "info");
+
+      try {
+        // Call /api/route/coords — takes current GPS position as source, same destination
+        const res = await fetch(`${API_BASE}/api/route/coords`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            source_lat: currentLatLng.lat,
+            source_lon: currentLatLng.lng,
+            dest_lat: destLat,
+            dest_lon: destLon,
+            vehicle_id: currentVehicleId,
+            priority: currentMission.priority || "Critical / Code Red",
+            blocked_edge: activeBlockedEdge || null,
+          }),
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.detail || "Reroute computation failed");
+        }
+
+        const data = await res.json();
+        const newCoords = data.route.coords; // [[lat,lon], ...]
+
+        // Remove old reroute preview line if any
+        if (mainRerouteLine) { mainMap.removeLayer(mainRerouteLine); mainRerouteLine = null; }
+
+        // Draw the real new route in solid green
+        mainRerouteLine = L.polyline(newCoords, {
+          color: "#07834f",
+          weight: 6,
+          opacity: 0.95,
+        }).addTo(mainMap);
+        mainMap.fitBounds(mainRerouteLine.getBounds(), { padding: [40, 40] });
+
+        // Update telemetry panel
+        const newEtaMin = (data.route.eta_s / 60).toFixed(1);
+        document.getElementById("statEta").textContent = `${newEtaMin} min (rerouted)`;
+        document.getElementById("statDist").textContent = `${(data.route.length_m / 1000).toFixed(2)} km`;
+        document.getElementById("delayCell").style.display = "none";
+        document.getElementById("causeCell").style.display = "none";
+
+        // Update monitoring with new route
+        fetch(`${API_BASE}/api/trip/start`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            vehicle_id: currentVehicleId,
+            planned_route_coords: newCoords,
+            destination_lat: destLat,
+            destination_lon: destLon,
+          }),
+        }).catch(() => {});
+
+        // Log the decision
+        await fetch(`${API_BASE}/api/missions/decision`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            mission_id: currentMission.mission_id,
+            decision: "approve",
+            action_type: "reroute",
+            new_route_coords: newCoords,
+            new_eta_s: data.route.eta_s,
+          }),
+        }).catch(() => {});
+
+        // Update currentMission so future agent calls use new route
+        currentMission.planned_route = data.route;
+        currentMission.eta_s = data.route.eta_s;
+
+        // Animate vehicle along the real new route
+        animateAlongCoords(newCoords);
+
+        document.getElementById("decisionActions").style.display = "none";
+        showToast(`✅ Reroute approved! New route computed. ETA: ${newEtaMin} min.`, "success");
+        refreshTimeline();
+
+      } catch (e) {
+        showToast(`⚠️ Reroute failed: ${e.message}`, "danger");
+        console.error("respondDecision reroute error:", e);
+      } finally {
+        document.querySelectorAll("#decisionActions .btn").forEach(b => { b.disabled = false; });
+      }
+    }
+
+    function showToast(msg, type = "info") {
+      const colors = { success: "#07834f", danger: "#ff4444", warning: "#ffaa00", info: "#2563eb" };
+      const toast = document.createElement("div");
+      toast.style.cssText = `position:fixed;bottom:24px;right:24px;z-index:9999;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;color:#fff;background:${colors[type]||colors.info};box-shadow:0 8px 32px rgba(0,0,0,0.4);max-width:380px;line-height:1.4;animation:fadeInUp 0.3s ease;`;
+      toast.textContent = msg;
+      document.body.appendChild(toast);
+      setTimeout(() => { toast.style.opacity = "0"; toast.style.transition = "opacity 0.4s"; setTimeout(() => toast.remove(), 400); }, 4000);
+    }
+
+    async function simulateObstacleControl() {
+      if (!currentMission || !mainVehicleMarker) return;
+
+      // Stop the current animation so ambulance freezes at its current position
+      if (animTimer) { clearInterval(animTimer); animTimer = null; }
+
+      const currentLatLng = mainVehicleMarker.getLatLng();
+      const currentPos = [currentLatLng.lat, currentLatLng.lng];
+      const routeCoords = currentMission.planned_route.coords;
+
+      // Find the point ~250m ahead on the route as the obstacle location
+      let nearestIdx = 0, bestDist = Infinity;
+      for (let idx = 0; idx < routeCoords.length; idx++) {
+        const d = haversineM(routeCoords[idx], currentPos);
+        if (d < bestDist) { bestDist = d; nearestIdx = idx; }
+      }
+      const OBSTACLE_AHEAD_M = 250;
+      let aheadIdx = nearestIdx, accumulatedM = 0;
+      while (aheadIdx < routeCoords.length - 1 && accumulatedM < OBSTACLE_AHEAD_M) {
+        accumulatedM += haversineM(routeCoords[aheadIdx], routeCoords[aheadIdx + 1]);
+        aheadIdx++;
+      }
+      const obstacleCoord = routeCoords[aheadIdx];
+
+      // Place obstacle marker on map
+      const obstacleIcon = L.divIcon({ html: "🚧", className: "obstacle-icon", iconSize: [28, 28] });
+      mainObstacleMarkers.push(
+        L.marker(obstacleCoord, { icon: obstacleIcon })
+          .addTo(mainMap)
+          .bindPopup("<b>🚧 Road Blocked Ahead</b><br>Vehicle stopped. Awaiting reroute approval.")
+          .openPopup()
+      );
+
+      document.getElementById("obstacleSimBtn").disabled = true;
+      showToast("🚧 Obstacle detected! AI Engine computing reroute…", "warning");
+
+      // Let the AI engine analyse and propose a reroute
+      // Build blocked_edge for agent context
+      const routeNodes = currentMission.planned_route.nodes || [];
+      const segStart = Math.max(nearestIdx, aheadIdx - 1);
+      const segEnd   = Math.min(routeCoords.length - 1, segStart + 1);
+      // Save blocked edge globally so respondDecision can pass it to backend
+      activeBlockedEdge = null; // reset first
+      if (routeNodes.length > segEnd) activeBlockedEdge = [routeNodes[segStart], routeNodes[segEnd]];
+      else activeBlockedEdge = [routeCoords[segStart], routeCoords[segEnd]];
+      const blockedEdge = activeBlockedEdge;
+
+      fetchAgentRecommendation(currentPos, blockedEdge, "accident");
+    }
+
+    async function refreshTimeline() {
+      try {
+        const res = await fetch(`${API_BASE}/api/timeline`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const list = document.getElementById("timelineList");
+        list.innerHTML = data.timeline.map(e => `
+      <div class="timeline-item ${e.severity}">
+        <div class="tl-header"><span class="tl-title">${e.title}</span><span class="tl-time">${e.time_str}</span></div>
+        <div class="tl-msg">${e.message}</div>
+      </div>
+    `).join("");
+      } catch (e) { }
+    }
+
+    async function loadDriverHUD() {
+      const vid = document.getElementById("driverVehicleSelect").value;
+      try {
+        const res = await fetch(`${API_BASE}/api/missions/active/${vid}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.has_active_mission && data.mission) {
+          const m = data.mission;
+          document.getElementById("driverMissionStatus").className = "badge badge-success";
+          document.getElementById("driverMissionStatus").textContent = m.status;
+          document.getElementById("dMissionId").textContent = m.id;
+          document.getElementById("dPriority").textContent = m.priority;
+          document.getElementById("dOrigin").textContent = m.source;
+          document.getElementById("dDest").textContent = m.destination;
+          document.getElementById("dEta").textContent = `${(m.eta_s / 60).toFixed(1)} MIN`;
+          driverMap.setView(m.source_coords, 14);
+          L.polyline(m.active_route_coords, { color: "#3d8bff", weight: 5 }).addTo(driverMap);
+        } else {
+          document.getElementById("driverMissionStatus").className = "badge badge-warning";
+          document.getElementById("driverMissionStatus").textContent = "STANDBY";
+          document.getElementById("dMissionId").textContent = "NONE";
+          document.getElementById("dPriority").textContent = "–";
+          document.getElementById("dOrigin").textContent = "Station Base";
+          document.getElementById("dDest").textContent = "Standby Zone";
+        }
+      } catch (e) { }
+    }
+
+    async function submitDriverReport() {
+      const vid = document.getElementById("driverVehicleSelect").value;
+      const reason = document.getElementById("driverReasonSelect").value;
+      const note = document.getElementById("driverNoteInput").value.trim();
+      try {
+        const res = await fetch(`${API_BASE}/api/driver/report`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ vehicle_id: vid, reason, details: note || "Driver reported blockage on scene" }),
+        });
+        if (res.ok) { alert("🚨 Report sent to Control Room! Agent recommendation updated."); loadDriverHUD(); refreshTimeline(); }
+      } catch (e) { alert(`Error: ${e.message}`); }
+    }
+
+    async function refreshAdminData() {
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/overview`);
+        if (!res.ok) return;
+        const data = await res.json();
+        document.getElementById("admStatus").textContent = data.status;
+        document.getElementById("admUptime").textContent = data.uptime_formatted;
+        document.getElementById("admFleetCount").textContent = data.fleet_summary.total_vehicles;
+        document.getElementById("admGraphNodes").textContent = data.road_network.nodes_count.toLocaleString();
+        document.getElementById("admMissionsCount").textContent = data.total_missions;
+
+        const fleetRes = await fetch(`${API_BASE}/api/fleet`);
+        if (fleetRes.ok) {
+          const fleetData = await fleetRes.json();
+          const tbody = document.getElementById("adminFleetTable");
+          tbody.innerHTML = fleetData.vehicles.map(v => `
+        <tr>
+          <td><b>${v.id}</b></td>
+          <td>${v.type.toUpperCase()}</td>
+          <td>${v.callsign}</td>
+          <td>${v.driver_name} (${v.driver_contact})</td>
+          <td><span class="badge ${v.status === 'En Route' ? 'badge-success' : (v.status === 'Deviated' ? 'badge-danger' : 'badge-info')}">${v.status}</span></td>
+          <td><code>${v.location[0].toFixed(4)}, ${v.location[1].toFixed(4)}</code></td>
+          <td>&#x26A1; ${v.battery_fuel_pct}%</td>
+        </tr>
+      `).join("");
+        }
+      } catch (e) { }
+    }
+
+    window.addEventListener("DOMContentLoaded", () => {
+      initMaps();
+      setInterval(refreshTimeline, 5000);
+    });
+  </script>
+</body>
+
+</html>

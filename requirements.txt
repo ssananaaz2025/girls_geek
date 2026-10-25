@@ -1,0 +1,3 @@
+# GeoAgentic System Requirements
+# Refer to backend/requirements.txt or install directly:
+-r backend/requirements.txt
