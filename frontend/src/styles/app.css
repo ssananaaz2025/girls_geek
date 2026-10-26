@@ -702,3 +702,43 @@ code { color: #176b40; background: #eef7ed; border-color: rgba(22,115,68,.14); }
   .admin-header { align-items: flex-start; gap: 8px; flex-direction: column; }
   .map-container, #mainMap, #driverMap { height: 290px; min-height: 290px; }
 }
+
+#controlRoomView.active { flex-direction: row; }
+.driver-map-pane, .control-room-pane { flex: 1 1 50%; min-width: 0; }
+.driver-map-pane {
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border);
+  background: var(--panel-2);
+}
+.driver-readonly-hud {
+  flex: 0 0 auto;
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+}
+.driver-readonly-hud .card-header { margin-bottom: 10px; }
+.driver-readonly-hud .mission-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; }
+.driver-readonly-hud .mission-info-row { min-width: 0; }
+.driver-readonly-hud .mission-info-val { overflow-wrap: anywhere; }
+.driver-eta { display: flex; justify-content: space-between; margin-top: 10px; color: var(--text-3); font-size: 11px; }
+.driver-eta strong { color: var(--green); font-family: var(--mono); }
+.driver-map-container { flex: 1 1 0; min-height: 0; position: relative; }
+.driver-map-container #driverMap { width: 100%; height: 100%; min-height: 300px; }
+.control-room-pane { display: flex; min-height: 0; }
+.control-room-pane .sidebar { flex: 0 0 30%; width: auto; min-width: 180px; }
+.control-room-pane .map-container { flex: 1 1 0; min-width: 0; max-width: none; }
+.control-room-pane .ai-right-panel { flex: 0 0 29%; width: auto; min-width: 180px; }
+
+@media (max-width: 980px) {
+  #controlRoomView.active { flex-direction: column; }
+  .driver-map-pane, .control-room-pane { flex: none; width: 100%; }
+  .driver-map-container { height: 340px; min-height: 340px; flex: none; }
+  .control-room-pane { flex-direction: column; }
+  .control-room-pane .sidebar, .control-room-pane .ai-right-panel { width: 100%; min-width: 0; flex: none; }
+  .control-room-pane .map-container { width: 100%; height: 340px; min-width: 0; flex: none; }
+}
+
+@media (max-width: 560px) {
+  .driver-map-container, .control-room-pane .map-container { height: 290px; min-height: 290px; }
+}
