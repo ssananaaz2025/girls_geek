@@ -29,9 +29,6 @@
       <button id="tabControlRoom" class="tab-btn active" onclick="switchTab('controlRoom')">
         <span>🚨</span> Control Room
       </button>
-      <button id="tabDriver" class="tab-btn" onclick="switchTab('driver')">
-        <span>🚐</span> Driver HUD
-      </button>
       <button id="tabAdmin" class="tab-btn" onclick="switchTab('admin')">
         <span>⚙️</span> Admin &amp; System
       </button>
@@ -61,6 +58,43 @@
 
     <!-- DASHBOARD 1: CONTROL ROOM -->
     <div id="controlRoomView" class="dashboard-view active">
+      <section class="driver-map-pane" aria-label="Read-only driver view">
+        <div class="driver-readonly-hud">
+          <div class="card-header">
+            <div class="card-title">
+              <div class="card-title-icon blue">🚐</div>
+              Driver HUD · <span id="driverVehicleLabel">AMB-104</span>
+            </div>
+            <span id="driverMissionStatus" class="badge badge-warning">STANDBY</span>
+          </div>
+          <div class="mission-info-grid">
+            <div class="mission-info-row">
+              <span class="mission-info-key">Mission ID</span>
+              <span class="mission-info-val" id="dMissionId">NONE</span>
+            </div>
+            <div class="mission-info-row">
+              <span class="mission-info-key">Priority</span>
+              <span class="mission-info-val" id="dPriority">Critical / Code Red</span>
+            </div>
+            <div class="mission-info-row">
+              <span class="mission-info-key">Origin</span>
+              <span class="mission-info-val" id="dOrigin">Station Base</span>
+            </div>
+            <div class="mission-info-row">
+              <span class="mission-info-key">Destination</span>
+              <span class="mission-info-val" id="dDest">Standby Zone</span>
+            </div>
+          </div>
+          <div class="driver-eta">
+            Estimated ETA <strong id="dEta">0.0 MIN</strong>
+          </div>
+        </div>
+        <div class="driver-map-container">
+          <div id="driverMap"></div>
+        </div>
+      </section>
+
+      <div class="control-room-pane">
       <div class="sidebar">
 
         <div id="dispatchCard" class="card">
@@ -102,15 +136,6 @@
             <div class="field">
               <label>Destination Address</label>
               <input id="destAddr" placeholder="e.g. Forum Mall, Koramangala, Bengaluru" />
-            </div>
-
-            <div class="field" style="margin-bottom: 12px;">
-              <label>Call Priority Code</label>
-              <select id="prioritySelect">
-                <option value="Critical / Code Red">🔴 Critical / Code Red — Life Threatening</option>
-                <option value="Urgent / Code Yellow">🟡 Urgent / Code Yellow — Serious Emergency</option>
-                <option value="Routine / Code Blue">🔵 Routine / Code Blue — Standard Response</option>
-              </select>
             </div>
 
             <button id="dispatchBtn" class="btn btn-primary" onclick="planAndDispatch()">
@@ -289,108 +314,11 @@
         </div>
 
       </div>
-    </div>
-
-
-    <!-- DASHBOARD 2: DRIVER HUD -->
-    <div id="driverView" class="dashboard-view">
-      <div class="driver-sidebar">
-
-        <div class="card">
-          <div class="card-header">
-            <div class="card-title">
-              <div class="card-title-icon blue">🚐</div>
-              Vehicle Selector
-            </div>
-            <span class="badge badge-info">TACTICAL HUD</span>
-          </div>
-          <select id="driverVehicleSelect" onchange="loadDriverHUD()">
-            <option value="AMB-104">AMB-104 — Paramedic ALS Unit (Rajesh Kumar)</option>
-            <option value="AMB-108">AMB-108 — Rapid Critical Care (Anita Sharma)</option>
-            <option value="FIRE-201">FIRE-201 — Heavy Water Tender (Vikram Singh)</option>
-            <option value="FIRE-202">FIRE-202 — Rescue Tender 202 (Karthik R.)</option>
-            <option value="POL-301">POL-301 — Traffic Interceptor (Insp. Suresh)</option>
-          </select>
-        </div>
-
-        <div class="card" style="border-color: rgba(0,232,122,0.2); background: linear-gradient(180deg, rgba(0,232,122,0.04), var(--panel-2));">
-          <div class="card-header">
-            <div class="card-title">
-              <div class="card-title-icon green">📍</div>
-              Assigned Mission
-            </div>
-            <span id="driverMissionStatus" class="badge badge-success">EN ROUTE</span>
-          </div>
-          <div class="mission-info-grid">
-            <div class="mission-info-row">
-              <span class="mission-info-key">Mission ID</span>
-              <span class="mission-info-val" id="dMissionId">MSN-101</span>
-            </div>
-            <div class="mission-info-row">
-              <span class="mission-info-key">Priority</span>
-              <span class="mission-info-val" id="dPriority" style="color:var(--red);">Critical / Code Red</span>
-            </div>
-            <div class="mission-info-row">
-              <span class="mission-info-key">Origin</span>
-              <span class="mission-info-val" id="dOrigin">Koramangala Sony World</span>
-            </div>
-            <div class="mission-info-row">
-              <span class="mission-info-key">Destination</span>
-              <span class="mission-info-val" id="dDest">Forum Mall Koramangala</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="hud-stat">
-          <div>
-            <div class="hud-label">Vehicle Speed</div>
-            <div id="dSpeed" class="hud-val">42 <span>KM/H</span></div>
-          </div>
-          <div class="hud-divider"></div>
-          <div>
-            <div class="hud-label">Estimated ETA</div>
-            <div id="dEta" class="hud-val">4.2 <span>MIN</span></div>
-          </div>
-        </div>
-
-        <div class="card" style="border-color: rgba(255,68,68,0.3); background: linear-gradient(180deg, rgba(255,68,68,0.04), var(--panel-2));">
-          <div class="card-header">
-            <div class="card-title">
-              <div class="card-title-icon red">🚨</div>
-              Route Deviation Report
-            </div>
-          </div>
-          <div style="font-size:11px; color:var(--text-3); margin-bottom:10px; line-height:1.5;">
-            Encountered unmapped blockage or road hazard? Report directly to Control Room.
-          </div>
-          <div class="field">
-            <label>Obstacle Reason</label>
-            <select id="driverReasonSelect">
-              <option value="Road Accident / Collision">Road Accident / Collision Ahead</option>
-              <option value="Urban Flooding / Waterlogging">Severe Waterlogging / Flood</option>
-              <option value="Gridlock / Traffic Congestion">Severe Gridlock / Traffic Standstill</option>
-              <option value="Unannounced Roadwork">Unannounced Construction / Barricade</option>
-              <option value="Hazardous Debris">Tree Fall / Fallen Power Cables</option>
-            </select>
-          </div>
-          <div class="field" style="margin-bottom:10px;">
-            <label>Driver Note / Remarks</label>
-            <input id="driverNoteInput" placeholder="e.g. 2 cars blocking both lanes near junction" />
-          </div>
-          <button class="btn btn-danger" onclick="submitDriverReport()">
-            <span>🚨</span> Report Blockage to Control Room
-          </button>
-        </div>
-
-      </div>
-
-      <div class="map-container">
-        <div id="driverMap"></div>
       </div>
     </div>
 
 
-    <!-- DASHBOARD 3: ADMIN -->
+    <!-- DASHBOARD 2: ADMIN -->
     <div id="adminView" class="dashboard-view">
       <div class="admin-header">
         <div>
