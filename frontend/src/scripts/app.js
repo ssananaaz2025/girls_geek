@@ -1,4 +1,5 @@
 const API_BASE = ""; // Uses Vite proxy to http://127.0.0.1:8000
+const MAX_SAFETY_PRIORITY = "Critical / Code Red";
 
 let mainMap = null;
 let driverMap = null;
@@ -61,8 +62,7 @@ function clearDriverMapLayers({ keepVehicleMarker = false } = {}) {
 }
 
 function updateDriverVehicleMarker(lat, lng, vehicleId = currentVehicleId) {
-  const selectedVid = document.getElementById("driverVehicleSelect")?.value;
-  if (!driverMap || (selectedVid && selectedVid !== vehicleId)) return;
+  if (!driverMap || vehicleId !== currentVehicleId) return;
 
   if (driverVehicleMarker) {
     driverVehicleMarker.setLatLng([lat, lng]);
@@ -98,11 +98,10 @@ function switchTab(tab) {
   if (tab === "controlRoom") {
     document.getElementById("tabControlRoom").classList.add("active");
     document.getElementById("controlRoomView").classList.add("active");
-    setTimeout(() => mainMap.invalidateSize(), 100);
-  } else if (tab === "driver") {
-    document.getElementById("tabDriver").classList.add("active");
-    document.getElementById("driverView").classList.add("active");
-    setTimeout(() => driverMap.invalidateSize(), 100);
+    setTimeout(() => {
+      mainMap.invalidateSize();
+      driverMap.invalidateSize();
+    }, 100);
     loadDriverHUD();
   } else if (tab === "admin") {
     document.getElementById("tabAdmin").classList.add("active");
@@ -160,7 +159,7 @@ async function resetMissionAndSystem() {
   const dMissionId = document.getElementById("dMissionId");
   if (dMissionId) dMissionId.textContent = "NONE";
   const dPriority = document.getElementById("dPriority");
-  if (dPriority) dPriority.textContent = "–";
+  if (dPriority) dPriority.textContent = MAX_SAFETY_PRIORITY;
   const dOrigin = document.getElementById("dOrigin");
   if (dOrigin) dOrigin.textContent = "Station Base";
   const dDest = document.getElementById("dDest");
@@ -191,16 +190,12 @@ async function planAndDispatch() {
   const vehicleId = document.getElementById("vehicleSelect").value;
   const source = document.getElementById("sourceAddr").value.trim();
   const destination = document.getElementById("destAddr").value.trim();
-  const priority = document.getElementById("prioritySelect").value;
 
   if (!source || !destination) { alert("Please enter both source and destination addresses."); return; }
 
   clearMainMap();
   currentVehicleId = vehicleId;
-  const driverVehicleSelect = document.getElementById("driverVehicleSelect");
-  if (driverVehicleSelect) {
-    driverVehicleSelect.value = vehicleId;
-  }
+  document.getElementById("driverVehicleLabel").textContent = vehicleId;
   clearDriverMapLayers({ keepVehicleMarker: false });
   document.getElementById("dispatchBtn").disabled = true;
 
@@ -208,7 +203,12 @@ async function planAndDispatch() {
     const res = await fetch(`${API_BASE}/api/route`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ source, destination, vehicle_id: vehicleId, priority }),
+      body: JSON.stringify({
+        source,
+        destination,
+        vehicle_id: vehicleId,
+        priority: MAX_SAFETY_PRIORITY,
+      }),
     });
 
     if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.detail || "Dispatch failed"); }
@@ -232,7 +232,7 @@ async function planAndDispatch() {
 
     // Collapse dispatch form to compact mode to free sidebar space
     document.getElementById("compactVehicle").textContent = `${vehicleId} · ${source.split(',')[0]}`;
-    document.getElementById("compactPriority").textContent = `● ${priority.split('/')[0].trim()}`;
+    document.getElementById("compactPriority").textContent = "● CRITICAL / CODE RED";
     document.getElementById("dispatchCard").classList.add("dispatch-card-compact");
 
     fetch(`${API_BASE}/api/trip/start`, {
@@ -243,6 +243,7 @@ async function planAndDispatch() {
 
     fetchAgentRecommendation(data.source_coords);
     animateVehicle(data.pings);
+    loadDriverHUD();
     refreshTimeline();
   } catch (e) {
     alert(`Error: ${e.message}`);
@@ -418,7 +419,7 @@ async function respondDecision(decision) {
         dest_lat: destLat,
         dest_lon: destLon,
         vehicle_id: currentVehicleId,
-        priority: currentMission.priority || "Critical / Code Red",
+        priority: MAX_SAFETY_PRIORITY,
         blocked_edge: activeBlockedEdge || null,
       }),
     });
@@ -443,8 +444,7 @@ async function respondDecision(decision) {
     mainMap.fitBounds(mainRerouteLine.getBounds(), { padding: [40, 40] });
 
     // Update Driver Dashboard route line without removing driverVehicleMarker
-    const selectedDriverVid = document.getElementById("driverVehicleSelect")?.value;
-    if (driverMap && selectedDriverVid === currentVehicleId) {
+    if (driverMap) {
       if (driverRouteLine) {
         try { driverMap.removeLayer(driverRouteLine); } catch (_) { }
         driverRouteLine = null;
@@ -588,9 +588,9 @@ async function refreshTimeline() {
 }
 
 async function loadDriverHUD() {
-  const vehicleSelect = document.getElementById("driverVehicleSelect");
-  if (!vehicleSelect) return;
-  const vid = vehicleSelect.value;
+  const vid = currentVehicleId;
+  const vehicleLabel = document.getElementById("driverVehicleLabel");
+  if (vehicleLabel) vehicleLabel.textContent = vid;
 
   const statusEl = document.getElementById("driverMissionStatus");
   const missionIdEl = document.getElementById("dMissionId");
@@ -659,7 +659,7 @@ async function loadDriverHUD() {
       statusEl.className = "badge badge-warning";
       statusEl.textContent = "STANDBY";
       missionIdEl.textContent = "NONE";
-      priorityEl.textContent = "–";
+      priorityEl.textContent = MAX_SAFETY_PRIORITY;
       originEl.textContent = "No active mission";
       destEl.textContent = "No active mission";
       etaEl.textContent = "0.0 MIN";
@@ -682,7 +682,7 @@ async function loadDriverHUD() {
     statusEl.className = "badge badge-success";
     statusEl.textContent = m.status || "EN ROUTE";
     missionIdEl.textContent = m.id || "—";
-    priorityEl.textContent = m.priority || "—";
+    priorityEl.textContent = MAX_SAFETY_PRIORITY;
     originEl.textContent = m.source || "Source unavailable";
     destEl.textContent = m.destination || "Destination unavailable";
     etaEl.textContent =
@@ -774,20 +774,6 @@ async function loadDriverHUD() {
     statusEl.textContent = "LOAD ERROR";
   }
 }
-async function submitDriverReport() {
-  const vid = document.getElementById("driverVehicleSelect").value;
-  const reason = document.getElementById("driverReasonSelect").value;
-  const note = document.getElementById("driverNoteInput").value.trim();
-  try {
-    const res = await fetch(`${API_BASE}/api/driver/report`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ vehicle_id: vid, reason, details: note || "Driver reported blockage on scene" }),
-    });
-    if (res.ok) { alert("🚨 Report sent to Control Room! Agent recommendation updated."); loadDriverHUD(); refreshTimeline(); }
-  } catch (e) { alert(`Error: ${e.message}`); }
-}
-
 async function refreshAdminData() {
   try {
     const res = await fetch(`${API_BASE}/api/admin/overview`);
@@ -820,5 +806,6 @@ async function refreshAdminData() {
 
 window.addEventListener("DOMContentLoaded", () => {
   initMaps();
+  loadDriverHUD();
   setInterval(refreshTimeline, 5000);
 });
